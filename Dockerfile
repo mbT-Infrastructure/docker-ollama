@@ -24,7 +24,7 @@ RUN git clone --branch AMD_APU_GTT_memory --depth 1 --recurse-submodules \
 RUN sed --in-place 's/\(APUvalidForGTT = \[\]string{\)\(.*}\?\)/\1 "gfx900", "gfx902", "gfx903",\2/' \
     ollama-src/discover/amd_linux.go
 
-RUN --mount=type=cache,target=/root/.ccache \
+RUN --mount=type=cache,target=/root/.ccache --mount=type=cache,target=ollama-src/llama/build \
     make --directory ollama-src/llama --jobs "$(nproc)"
 
 RUN --mount=type=cache,target=/root/.ccache \

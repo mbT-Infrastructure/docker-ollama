@@ -9,7 +9,7 @@ done
 if [[ -n "$STARTUP_PRELOAD" ]]; then
     for MODEL in $STARTUP_PRELOAD; do
         echo "Preloading model \"$MODEL\""
-        ollama run "$MODEL" "" --keepalive -1h \
+        ollama run "$MODEL" "" --keepalive -1h > /dev/null \
             || echo "Failed to preload model \"$MODEL\""
     done
 fi
@@ -17,7 +17,7 @@ fi
 if [[ -n "$STARTUP_PULL" ]]; then
     for MODEL in $STARTUP_PULL; do
         echo "Pulling model \"$MODEL\""
-        ollama pull "$MODEL" \
+        ollama pull "$MODEL" > /dev/null \
             || echo "Failed to pull model \"$MODEL\""
     done
 fi

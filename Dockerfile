@@ -56,6 +56,7 @@ COPY --from=builder --link /root/builder/ollama-src/dist/linux-*/lib/ /usr/local
 # COPY --from=builder --link /opt/rocm/lib /usr/local/lib/ollama
 COPY --link files/entrypoint.sh files/healthcheck.sh files/prepare-ollama.sh /usr/local/bin/
 
+ENV OLLAMA_FLASH_ATTENTION=1
 ENV OLLAMA_HOST="http://0.0.0.0:11434"
 ENV OLLAMA_KEEP_ALIVE="24h"
 ENV OLLAMA_MAX_LOADED_MODELS="10"

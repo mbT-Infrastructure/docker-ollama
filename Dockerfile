@@ -29,6 +29,10 @@ RUN install-autonomous.sh install Go \
 RUN git clone --branch AMD_APU_GTT_memory --depth 1 --recurse-submodules \
     https://github.com/Maciej-Mogilany/ollama.git ollama-src
 
+# Set default num_ctx
+RUN sed --in-place 's/\(NumCtx: *\)[0-9]*\(,\).*/\18192\2/' \
+    ollama-src/api/types.go
+
 # Enable GTT for more apus
 RUN sed --in-place 's/\(APUvalidForGTT = \[\]string{\)\(.*}\?\)/\1 "gfx900", "gfx902", "gfx903",\2/' \
     ollama-src/discover/amd_linux.go

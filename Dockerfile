@@ -40,19 +40,12 @@ RUN sed --in-place 's/\(APUvalidForGTT = \[\]string{\)\(.*}\?\)/\1 "gfx900", "gf
 ENV LIBRARY_PATH=/opt/amdgpu/lib64:/usr/local/cuda/lib64/stubs
 ARG OLLAMA_CUSTOM_CPU_DEFS
 RUN --mount=type=cache,target=/root/.ccache --mount=type=cache,target=ollama-src/llama/build \
-    make --directory ollama-src/llama --jobs "$(nproc)"
+    make --directory ollama-src --jobs "$(nproc)" dist
 
-RUN --mount=type=cache,target=/root/.ccache \
-    go build -C ollama-src -trimpath -o dist/linux-amd64/bin/ollama .
+FROM ubuntu:${UBUNTU_VERSION}
+# FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 
-# RUN ls -l /root/builder/ollama-src/dist/linux-amd64-rocm/lib/ollama && exit 1
-RUN rm /root/builder/ollama-src/dist/linux-amd64-rocm/lib/ollama/libelf.so.1 \
-    /root/builder/ollama-src/dist/linux-amd64-rocm/lib/ollama/libhipblas.so
-
-# FROM ubuntu:${UBUNTU_VERSION}
-FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
-
-RUN apt update -qq && apt install -y -qq ca-certificates libelf++0 \
+RUN apt update -qq && apt install -y -qq ca-certificates curl libelf++0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --link /root/builder/ollama-src/dist/linux-*/bin/ /usr/local/bin/
@@ -62,11 +55,11 @@ COPY --link files/entrypoint.sh files/healthcheck.sh files/prepare-ollama.sh /us
 
 ENV OLLAMA_FLASH_ATTENTION=1
 ENV OLLAMA_HOST="http://0.0.0.0:11434"
-ENV OLLAMA_KEEP_ALIVE="24h"
+ENV OLLAMA_KEEP_ALIVE="4h"
 ENV OLLAMA_MAX_LOADED_MODELS="10"
 ENV OLLAMA_NUM_PARALLEL="1"
-ENV STARTUP_PRELOAD=""
-ENV STARTUP_PULL=""
+ENV PRELOAD_MODELS=""
+ENV PULL_MODELS=""
 
 ENTRYPOINT [ "entrypoint.sh" ]
 CMD [ "ollama", "serve"]

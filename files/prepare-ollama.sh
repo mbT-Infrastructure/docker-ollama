@@ -30,8 +30,8 @@ while ! healthcheck.sh &> /dev/null; do
     sleep 5
 done
 
-if [[ -n "$STARTUP_PRELOAD" ]]; then
-    for MODEL in $STARTUP_PRELOAD; do
+if [[ -n "$PRELOAD_MODELS" ]]; then
+    for MODEL in $PRELOAD_MODELS; do
         if [[ "$STARTUP_PULL" == *"$MODEL"* ]]; then
             pullModel "$MODEL"
             STARTUP_PULL="${STARTUP_PULL/$MODEL/}"
@@ -40,12 +40,25 @@ if [[ -n "$STARTUP_PRELOAD" ]]; then
     done
 fi
 
-if [[ -n "$STARTUP_PULL" ]]; then
-    for MODEL in $STARTUP_PULL; do
+if [[ -n "$PULL_MODELS" ]]; then
+    for MODEL in $PULL_MODELS; do
         echo "Pulling model \"$MODEL\"."
         curl --fail --silent --data \
             "{\"model\": \"$MODEL\" }" \
             http://localhost:11434/api/pull \
             || echo "Failed to pull model \"$MODEL\""
+    done
+fi
+
+if [[ -n "$PRELOAD_MODELS" ]]; then
+    while true; do
+        sleep 600
+        LOADED_MODELS="$(curl --fail --silent http://localhost:11434/api/ps \
+            | sed 's/,/,\n/g' |sed --silent 's/^.*"name": *"\([^"]*\)".*$/\1/p')"
+        if [[ -z "$LOADED_MODELS" ]]; then
+            for MODEL in $PRELOAD_MODELS; do
+                loadModel "$MODEL"
+            done
+        fi
     done
 fi

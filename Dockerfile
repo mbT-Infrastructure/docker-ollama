@@ -43,16 +43,15 @@ RUN --mount=type=cache,target=/root/.ccache --mount=type=cache,target=ollama-src
     make --directory ollama-src --jobs "$(nproc)" dist
 
 FROM ubuntu:${UBUNTU_VERSION}
-# FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 
 RUN apt update -qq && apt install -y -qq ca-certificates curl libelf++0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --link /root/builder/ollama-src/dist/linux-*/bin/ /usr/local/bin/
 COPY --from=builder --link /root/builder/ollama-src/dist/linux-*/lib/ /usr/local/lib/
-# COPY --from=builder --link /opt/rocm/lib /usr/local/lib/ollama
 COPY --link files/entrypoint.sh files/healthcheck.sh files/prepare-ollama.sh /usr/local/bin/
 
+ENV DELETE_MODELS=false
 ENV OLLAMA_FLASH_ATTENTION=1
 ENV OLLAMA_HOST="http://0.0.0.0:11434"
 ENV OLLAMA_KEEP_ALIVE="4h"

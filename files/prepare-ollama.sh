@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -e -o pipefail
 
-function pullModel() {
+function deleteModel(){
     MODEL=$1
-    echo "Pulling model \"$MODEL\""
-    curl --fail --silent --data \
-        "{\"model\": \"$MODEL\" }" \
-        http://localhost:11434/api/pull \
-        || echo "Failed to pull model \"$MODEL\""
+    echo "Deleting model \"$MODEL\"."
+    curl --fail --silent -X DELETE --data "{\"model\": \"$MODEL\" }" \
+        http://localhost:11434/api/delete \
+        || echo "Failed to delete model \"$MODEL\""
 }
 
 function loadModel() {
@@ -25,16 +24,34 @@ function loadModel() {
         || echo "Failed to preload model \"$MODEL\""
 }
 
+function pullModel() {
+    MODEL=$1
+    echo "Pulling model \"$MODEL\""
+    curl --fail --silent --data "{\"model\": \"$MODEL\" }" http://localhost:11434/api/pull \
+        || echo "Failed to pull model \"$MODEL\""
+}
+
+
 while ! healthcheck.sh &> /dev/null; do
     echo "Prepare: Waiting for Ollama to start..."
     sleep 5
 done
 
+if [[ "${DELETE_MODELS:-}" == "true" ]]; then
+    mapfile -t INSTALLED_MODELS < <(curl --fail --silent http://localhost:11434/api/tags \
+        | sed 's/,/,\n/g' | sed --silent 's/^.*"name": *"\([^"]*\)".*$/\1/p')
+    for MODEL in "${INSTALLED_MODELS[@]}"; do
+        if [[ "$PULL_MODELS $LOADED_MODELS" != *"$MODEL"* ]]; then
+            deleteModel "$MODEL"
+        fi
+    done
+fi
+
 if [[ -n "$PRELOAD_MODELS" ]]; then
     for MODEL in $PRELOAD_MODELS; do
-        if [[ "$STARTUP_PULL" == *"$MODEL"* ]]; then
+        if [[ "$PULL_MODELS" == *"$MODEL"* ]]; then
             pullModel "$MODEL"
-            STARTUP_PULL="${STARTUP_PULL/$MODEL/}"
+            PULL_MODELS="${PULL_MODELS/$MODEL/}"
         fi
         loadModel "$MODEL"
     done
@@ -43,8 +60,7 @@ fi
 if [[ -n "$PULL_MODELS" ]]; then
     for MODEL in $PULL_MODELS; do
         echo "Pulling model \"$MODEL\"."
-        curl --fail --silent --data \
-            "{\"model\": \"$MODEL\" }" \
+        curl --fail --silent --data "{\"model\": \"$MODEL\" }" \
             http://localhost:11434/api/pull \
             || echo "Failed to pull model \"$MODEL\""
     done

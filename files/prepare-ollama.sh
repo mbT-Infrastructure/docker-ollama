@@ -2,7 +2,7 @@
 set -e -o pipefail
 
 function deleteModel(){
-    MODEL=$1
+    local MODEL="$1"
     echo "Deleting model \"$MODEL\"."
     curl --fail --silent -X DELETE --data "{\"model\": \"$MODEL\" }" --output /dev/null \
         http://localhost:11434/api/delete \
@@ -10,22 +10,24 @@ function deleteModel(){
 }
 
 function loadModel() {
-    MODEL=$1
-    OPTIONS=""
+    local MODEL="$1"
+    local OPTIONS=""
     if [[ "$MODEL" == *"["*"]" ]]; then
         OPTIONS="${MODEL#*"["}"
         OPTIONS="${OPTIONS%"]"*}"
         MODEL="${MODEL%"["*"]"}"
     fi
     echo "Loading model \"$MODEL\"${OPTIONS:+ with options \"${OPTIONS}\"}."
-    curl --fail --silent --data \
-        "{\"model\": \"$MODEL\", \"keep_alive\": -1, \"options\": { ${OPTIONS} }}" \
-        --output /dev/null http://localhost:11434/api/generate \
+    local REQUEST_BODY="{\"model\": \"$MODEL\", \"keep_alive\": -1, \"options\": { ${OPTIONS} }}"
+    curl --fail --silent --data "$REQUEST_BODY" --output /dev/null \
+        http://localhost:11434/api/generate \
+        || curl --fail --silent --data "$REQUEST_BODY" --output /dev/null \
+        http://localhost:11434/api/embed \
         || echo "Failed to preload model \"$MODEL\""
 }
 
 function pullModel() {
-    MODEL=$1
+    local MODEL="$1"
     echo "Pulling model \"$MODEL\""
     curl --fail --silent --data "{\"model\": \"$MODEL\" }" --output /dev/null \
         http://localhost:11434/api/pull \

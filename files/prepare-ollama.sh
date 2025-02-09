@@ -4,7 +4,7 @@ set -e -o pipefail
 function deleteModel(){
     MODEL=$1
     echo "Deleting model \"$MODEL\"."
-    curl --fail --silent -X DELETE --data "{\"model\": \"$MODEL\" }" \
+    curl --fail --silent -X DELETE --data "{\"model\": \"$MODEL\" }" --output /dev/null \
         http://localhost:11434/api/delete \
         || echo "Failed to delete model \"$MODEL\""
 }
@@ -20,14 +20,15 @@ function loadModel() {
     echo "Loading model \"$MODEL\"${OPTIONS:+ with options \"${OPTIONS}\"}."
     curl --fail --silent --data \
         "{\"model\": \"$MODEL\", \"keep_alive\": -1, \"options\": { ${OPTIONS} }}" \
-        http://localhost:11434/api/generate \
+        --output /dev/null http://localhost:11434/api/generate \
         || echo "Failed to preload model \"$MODEL\""
 }
 
 function pullModel() {
     MODEL=$1
     echo "Pulling model \"$MODEL\""
-    curl --fail --silent --data "{\"model\": \"$MODEL\" }" http://localhost:11434/api/pull \
+    curl --fail --silent --data "{\"model\": \"$MODEL\" }" --output /dev/null \
+        http://localhost:11434/api/pull \
         || echo "Failed to pull model \"$MODEL\""
 }
 
@@ -59,10 +60,7 @@ fi
 
 if [[ -n "$PULL_MODELS" ]]; then
     for MODEL in $PULL_MODELS; do
-        echo "Pulling model \"$MODEL\"."
-        curl --fail --silent --data "{\"model\": \"$MODEL\" }" \
-            http://localhost:11434/api/pull \
-            || echo "Failed to pull model \"$MODEL\""
+        pullModel "$MODEL"
     done
 fi
 
@@ -70,7 +68,8 @@ if [[ -n "$PRELOAD_MODELS" ]]; then
     while true; do
         sleep 600
         LOADED_MODELS="$(curl --fail --silent http://localhost:11434/api/ps \
-            | sed 's/,/,\n/g' |sed --silent 's/^.*"name": *"\([^"]*\)".*$/\1/p')"
+            | sed 's/,/,\n/g' \
+            | sed --silent 's/^.*"name": *"\([^"]*\)".*$/\1/p')"
         if [[ -z "$LOADED_MODELS" ]]; then
             for MODEL in $PRELOAD_MODELS; do
                 loadModel "$MODEL"

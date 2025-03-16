@@ -9,10 +9,8 @@ services:
         environment:
             - DELETE_MODELS=true
             - OLLAMA_DEBUG=1
-            - PRELOAD_MODELS=llama3.2:1b
-            - PULL_MODELS=qwen2.5-coder:0.5b
-        #     - HSA_OVERRIDE_GFX_VERSION=9.0.0
-        #     - HSA_ENABLE_SDMA=0
+            - PRELOAD_MODELS=gemma3:1b
+            - PULL_MODELS=llama3.2:1b
         volumes:
             - "./data-local:/root/.ollama"
         ports:

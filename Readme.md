@@ -6,9 +6,9 @@ This image contains Ollama with the following properties and enhancements:
 -   Flash attention enabled by default
 -   Preloading of models via environment variable `PRELOAD_MODELS`
 -   Pulling of models at startup via environment variable `PULL_MODELS`
--   Option to delete models not specified for pulling by setting environment variable
+-   Option to delete models not specified for preloading or pulling by setting environment variable
     `DELETE_MODELS=true`
--   Cuda V12 support
+-   Cuda support
 -   ROCm support
 
 Usage is the same as in the [official Ollama Docker image].

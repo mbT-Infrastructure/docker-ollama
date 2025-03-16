@@ -44,7 +44,7 @@ if [[ "${DELETE_MODELS:-}" == "true" ]]; then
     mapfile -t INSTALLED_MODELS < <(curl --fail --silent http://localhost:11434/api/tags \
         | sed 's/,/,\n/g' | sed --silent 's/^.*"name": *"\([^"]*\)".*$/\1/p')
     for MODEL in "${INSTALLED_MODELS[@]}"; do
-        if [[ "$PULL_MODELS $LOADED_MODELS" != *"$MODEL"* ]]; then
+        if [[ "$PRELOAD_MODELS $PULL_MODELS $LOADED_MODELS" != *"$MODEL"* ]]; then
             deleteModel "$MODEL"
         fi
     done

@@ -9,8 +9,10 @@ services:
         environment:
             - DELETE_MODELS=true
             - OLLAMA_DEBUG=1
+            - NICENESS_ADJUSTMENT=19
             - PRELOAD_MODELS=gemma3:1b
             - PULL_MODELS=llama3.2:1b
+            - SCHED_POLICY=idle
         volumes:
             - "./data-local:/root/.ollama"
         ports:

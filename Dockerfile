@@ -74,7 +74,7 @@ COPY --from=builder-cuda /root/builder/ollama/lib /root/builder/ollama/lib
 COPY --from=builder-rocm /root/builder/ollama/lib /root/builder/ollama/lib
 
 
-FROM madebytimo/base
+FROM madebytimo/scripts
 
 COPY --from=builder --link /root/builder/ollama/bin/ /usr/local/bin/
 COPY --from=builder --link /root/builder/ollama/lib/ /usr/local/lib/
@@ -82,6 +82,7 @@ COPY --link files/entrypoint.sh files/healthcheck.sh files/prepare-ollama.sh /us
 
 ENV DELETE_MODELS=false
 ENV LD_LIBRARY_PATH="/usr/local/lib"
+ENV NICENESS_ADJUSTMENT=0
 ENV OLLAMA_CONTEXT_LENGTH="8096"
 ENV OLLAMA_FLASH_ATTENTION=1
 ENV OLLAMA_HOST="http://0.0.0.0:11434"
@@ -90,6 +91,7 @@ ENV OLLAMA_MAX_LOADED_MODELS="10"
 ENV OLLAMA_NUM_PARALLEL="1"
 ENV PRELOAD_MODELS=""
 ENV PULL_MODELS=""
+ENV SCHED_POLICY="other"
 
 ENTRYPOINT [ "entrypoint.sh" ]
 CMD [ "ollama", "serve"]

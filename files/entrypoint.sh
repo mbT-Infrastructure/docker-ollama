@@ -3,4 +3,4 @@ set -e -o pipefail
 
 prepare-ollama.sh &
 
-exec "$@"
+exec low-priority.sh "$@"

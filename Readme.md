@@ -9,6 +9,8 @@ This image contains Ollama with the following properties and enhancements:
 -   Pulling of models at startup via environment variable `PULL_MODELS`
 -   Option to delete models not specified for preloading or pulling by setting environment variable
     `DELETE_MODELS=true`
+-   Option to change the process priority using environment variables `SCHED_POLICY` and
+    `NICENESS_ADJUSTMENT`
 -   Cuda support
 -   ROCm support
 

@@ -2,13 +2,18 @@ FROM madebytimo/builder AS builder-src
 
 WORKDIR /root/builder/ollama-src
 
-# Clone Maciej-Mogilany/AMD_APU_GTT_memory and merge ollama/main
-RUN git clone --branch AMD_APU_GTT_memory --recurse-submodules \
-    https://github.com/Maciej-Mogilany/ollama . \
-    && git remote add ollama https://github.com/ollama/ollama \
-    && git fetch ollama main \
-    && git merge --no-edit ollama/main \
-    && git submodule update --recursive
+ADD --keep-git-dir https://github.com/ollama/ollama.git .
+
+# Merge Maciej-Mogilany/AMD_APU_GTT_memory
+RUN  git fetch --unshallow \
+    && git remote add pr https://github.com/Maciej-Mogilany/ollama \
+    && git fetch pr AMD_APU_GTT_memory \
+    && git merge --no-edit pr/AMD_APU_GTT_memory
+
+# Enable GTT for more apus
+RUN sed --in-place \
+    's/\(APUvalidForGTT = \[\]string{\)\(.*}\?\)/\1 "gfx900", "gfx902", "gfx903",\2/' \
+    discover/amd_linux.go
 
 RUN mkdir --parents /root/builder/ollama/{bin,lib}
 
@@ -81,6 +86,7 @@ COPY --from=builder --link /root/builder/ollama/lib/ /usr/local/lib/
 COPY --link files/entrypoint.sh files/healthcheck.sh files/prepare-ollama.sh /usr/local/bin/
 
 ENV DELETE_MODELS=false
+ENV GIN_MODE=release
 ENV LD_LIBRARY_PATH="/usr/local/lib"
 ENV NICENESS_ADJUSTMENT=0
 ENV OLLAMA_CONTEXT_LENGTH="8096"

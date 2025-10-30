@@ -2,20 +2,12 @@ FROM madebytimo/builder AS builder-src
 
 WORKDIR /root/builder/ollama-src
 
-ADD --keep-git-dir https://github.com/ollama/ollama.git .
-
-# Merge Maciej-Mogilany/AMD_APU_GTT_memory
-RUN  git fetch --unshallow \
-    && git remote add pr https://github.com/Maciej-Mogilany/ollama \
-    && git fetch pr AMD_APU_GTT_memory \
-    && git merge --no-edit pr/AMD_APU_GTT_memory
-
-# Enable GTT for more apus
-RUN sed --in-place \
-    's/\(APUvalidForGTT = \[\]string{\)\(.*}\?\)/\1 "gfx900", "gfx902", "gfx903",\2/' \
-    discover/amd_linux.go
+ADD https://github.com/ollama/ollama.git .
 
 RUN mkdir --parents /root/builder/ollama/{bin,lib}
+
+ENV GIN_MODE=release
+
 
 FROM builder-src AS builder-cuda
 ARG TARGETPLATFORM
@@ -33,32 +25,34 @@ RUN DISTRIBUTION="$(lsb_release --id --short)" \
     && echo "deb [signed-by=/usr/share/keyrings/nvidia-cuda.gpg]" \
     "https://developer.download.nvidia.com/compute/cuda/repos/${NVIDIA_REPO}/ /" \
     > /etc/apt/sources.list.d/nvidia-cuda.list \
-    && apt update -qq && apt install -y -qq cuda-toolkit
+    && apt update -qq && apt install -y -qq cuda-toolkit-13
 ENV PATH=/usr/local/cuda/bin:$PATH
 
 RUN --mount=type=cache,target=/root/.ccache \
-    cmake --preset 'CUDA 12' \
-    && cmake --build --parallel "$(nproc)" --preset 'CUDA 12' \
-    && cmake --install build --component CUDA --strip \
+    cmake --preset 'CUDA 13' -DOLLAMA_RUNNER_DIR="cuda_v13" \
+    && cmake --build --parallel "$(nproc)" --preset 'CUDA 13' \
+    && cmake --install build --component CUDA --strip --parallel "$(nproc)" \
     && mv dist/lib/ollama ../ollama/lib
 
 
-FROM builder-src AS builder-rocm
+FROM builder-src AS builder-vulkan
 
-RUN curl --silent --location "https://repo.radeon.com/rocm/rocm.gpg.key" \
-        | gpg --yes --dearmor --output /usr/share/keyrings/amd-rocm.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/amd-rocm.gpg]" \
-        "https://repo.radeon.com/rocm/apt/6.3.3 jammy main" \
-        > /etc/apt/sources.list.d/amd-rocm.list \
-    && echo -e 'Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 600' \
-        > /etc/apt/preferences.d/rocm-pin-600 \
-    && apt update -qq && apt install -y -qq rocm
-ENV PATH=/opt/rocm/hcc/bin:/opt/rocm/hip/bin:/opt/rocm/bin:$PATH
+RUN VULKAN_VERSION="1.4.328.1" \
+    && mkdir /root/builder/vulkan \
+    && download.sh --output - \
+    "https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/linux/vulkansdk-linux-x86_64-${VULKAN_VERSION}.tar.xz" \
+    | tar --extract --strip-components 1 --xz --directory /root/builder/vulkan \
+    && /root/builder/vulkan/vulkansdk --maxjobs shaderc vulkan-loader \
+    && ls -la /root/builder/vulkan/ \
+    && cp -r /root/builder/vulkan/x86_64/include/* /usr/local/include/ \
+    && cp -r /root/builder/vulkan/x86_64/lib/* /usr/local/lib \
+    && cp -r /root/builder/vulkan/x86_64/bin/* /usr/local/bin \
+    && rm -rf /root/builder/vulkan
 
 RUN --mount=type=cache,target=/root/.ccache \
-    cmake --preset 'ROCm 6' \
-    && cmake --build --parallel "$(nproc)" --preset 'ROCm 6' \
-    && cmake --install build --component HIP --strip \
+    cmake --preset 'Vulkan' -DOLLAMA_RUNNER_DIR="vulkan" \
+    && cmake --build --parallel "$(nproc)" --preset 'Vulkan' \
+    && cmake --install build --component Vulkan --strip --parallel "$(nproc)" \
     && mv dist/lib/ollama ../ollama/lib
 
 
@@ -67,7 +61,7 @@ FROM builder-src AS builder
 RUN --mount=type=cache,target=/root/.ccache \
     cmake --preset 'CPU' \
     && cmake --build --parallel "$(nproc)" --preset 'CPU' \
-    && cmake --install build --component CPU --strip \
+    && cmake --install build --component CPU --strip --parallel "$(nproc)" \
     && mv dist/lib/ollama ../ollama/lib
 
 ENV GOFLAGS="'-ldflags=-w -s'"
@@ -76,20 +70,22 @@ RUN --mount=type=cache,target=/root/.cache \
     go build -buildmode=pie -o ../ollama/bin -trimpath
 
 COPY --from=builder-cuda /root/builder/ollama/lib /root/builder/ollama/lib
-COPY --from=builder-rocm /root/builder/ollama/lib /root/builder/ollama/lib
+COPY --from=builder-vulkan /root/builder/ollama/lib /root/builder/ollama/lib
 
 
 FROM madebytimo/scripts
+
+RUN apt update -qq && apt install -y -qq mesa-vulkan-drivers \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --link /root/builder/ollama/bin/ /usr/local/bin/
 COPY --from=builder --link /root/builder/ollama/lib/ /usr/local/lib/
 COPY --link files/entrypoint.sh files/healthcheck.sh files/prepare-ollama.sh /usr/local/bin/
 
 ENV DELETE_MODELS=false
-ENV GIN_MODE=release
 ENV LD_LIBRARY_PATH="/usr/local/lib"
 ENV NICENESS_ADJUSTMENT=0
-ENV OLLAMA_CONTEXT_LENGTH="8096"
+ENV OLLAMA_CONTEXT_LENGTH="16000"
 ENV OLLAMA_FLASH_ATTENTION=1
 ENV OLLAMA_HOST="http://0.0.0.0:11434"
 ENV OLLAMA_KEEP_ALIVE="4h"

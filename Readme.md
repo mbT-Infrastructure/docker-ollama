@@ -2,9 +2,8 @@
 
 This image contains Ollama with the following properties and enhancements:
 
--   GTT memory fix from this [PR](https://github.com/ollama/ollama/pull/6282)
 -   Flash attention enabled by default.
--   Default context length of `8096`.
+-   Default context length of `16000`.
 -   Preloading of models via environment variable `PRELOAD_MODELS`
 -   Pulling of models at startup via environment variable `PULL_MODELS`
 -   Option to delete models not specified for preloading or pulling by setting environment variable
@@ -12,7 +11,7 @@ This image contains Ollama with the following properties and enhancements:
 -   Option to change the process priority using environment variables `SCHED_POLICY` and
     `NICENESS_ADJUSTMENT`
 -   Cuda support
--   ROCm support
+-   Vulkan support
 
 Usage is the same as in the [official Ollama Docker image].
 

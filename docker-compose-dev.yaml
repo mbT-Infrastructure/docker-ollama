@@ -5,7 +5,6 @@ services:
         build: .
         # devices:
         #     - /dev/dri
-        #     - /dev/kfd
         environment:
             - DELETE_MODELS=true
             - OLLAMA_DEBUG=1

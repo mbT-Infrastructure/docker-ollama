@@ -25,12 +25,13 @@ RUN DISTRIBUTION="$(lsb_release --id --short)" \
     && echo "deb [signed-by=/usr/share/keyrings/nvidia-cuda.gpg]" \
     "https://developer.download.nvidia.com/compute/cuda/repos/${NVIDIA_REPO}/ /" \
     > /etc/apt/sources.list.d/nvidia-cuda.list \
-    && apt update -qq && apt install -y -qq cuda-toolkit-13
+    && apt update -qq && apt install -y -qq cuda-toolkit-12-8 \
+    && rm -rf /var/lib/apt/lists/*
 ENV PATH=/usr/local/cuda/bin:$PATH
 
 RUN --mount=type=cache,target=/root/.ccache \
-    cmake --preset 'CUDA 13' -DOLLAMA_RUNNER_DIR="cuda_v13" \
-    && cmake --build --parallel "$(nproc)" --preset 'CUDA 13' \
+    cmake --preset 'CUDA 12' \
+    && cmake --build --parallel "$(nproc)" --preset 'CUDA 12' \
     && cmake --install build --component CUDA --strip --parallel "$(nproc)" \
     && mv dist/lib/ollama ../ollama/lib
 
@@ -82,15 +83,16 @@ COPY --from=builder --link /root/builder/ollama/bin/ /usr/local/bin/
 COPY --from=builder --link /root/builder/ollama/lib/ /usr/local/lib/
 COPY --link files/entrypoint.sh files/healthcheck.sh files/prepare-ollama.sh /usr/local/bin/
 
-ENV DELETE_MODELS=false
+ENV DELETE_MODELS="false"
 ENV LD_LIBRARY_PATH="/usr/local/lib"
-ENV NICENESS_ADJUSTMENT=0
-ENV OLLAMA_CONTEXT_LENGTH="16000"
-ENV OLLAMA_FLASH_ATTENTION=1
+ENV NICENESS_ADJUSTMENT="0"
+ENV OLLAMA_CONTEXT_LENGTH="32000"
+ENV OLLAMA_FLASH_ATTENTION="1"
 ENV OLLAMA_HOST="http://0.0.0.0:11434"
 ENV OLLAMA_KEEP_ALIVE="4h"
 ENV OLLAMA_MAX_LOADED_MODELS="10"
 ENV OLLAMA_NUM_PARALLEL="1"
+ENV OLLAMA_VULKAN="1"
 ENV PRELOAD_MODELS=""
 ENV PULL_MODELS=""
 ENV SCHED_POLICY="other"

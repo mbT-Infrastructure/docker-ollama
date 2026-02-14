@@ -20,18 +20,18 @@ RUN DISTRIBUTION="$(lsb_release --id --short)" \
     DISTRIBUTION_RELEASE="$(lsb_release --release --short)" \
     && NVIDIA_REPO="${DISTRIBUTION,,}${DISTRIBUTION_RELEASE}/${TARGET_ARCHITECTURE_ALT}" \
     && curl --silent --location \
-    "https://developer.download.nvidia.com/compute/cuda/repos/${NVIDIA_REPO}/3bf863cc.pub" \
+    "https://developer.download.nvidia.com/compute/cuda/repos/${NVIDIA_REPO}/8793F200.pub" \
     | gpg --yes --dearmor --output /usr/share/keyrings/nvidia-cuda.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/nvidia-cuda.gpg]" \
     "https://developer.download.nvidia.com/compute/cuda/repos/${NVIDIA_REPO}/ /" \
     > /etc/apt/sources.list.d/nvidia-cuda.list \
-    && apt update -qq && apt install -y -qq cuda-toolkit-12-8 \
+    && apt update -qq && apt install -y -qq cuda-toolkit-13 \
     && rm -rf /var/lib/apt/lists/*
 ENV PATH=/usr/local/cuda/bin:$PATH
 
 RUN --mount=type=cache,target=/root/.ccache \
-    cmake --preset 'CUDA 12' \
-    && cmake --build --parallel "$(nproc)" --preset 'CUDA 12' \
+    cmake --preset 'CUDA 13' \
+    && cmake --build --parallel "$(nproc)" --preset 'CUDA 13' \
     && cmake --install build --component CUDA --strip --parallel "$(nproc)" \
     && mv dist/lib/ollama ../ollama/lib
 

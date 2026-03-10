@@ -32,7 +32,8 @@ jobs:
                   if (ls /media/saved-cache/*.tar.zst); then
                       docker run --pull always --rm \
                           --volume "/media/saved-cache:/media/saved-cache" \
-                          --volume "docker-ollama-build-cache:/media/build-cache" \
+                          --volume \
+                          "docker-ollama-build-cache:/media/build-cache" \
                           --workdir /media \
                           madebytimo/scripts \
                           compress.sh --decompress /media/saved-cache/*.tar.zst
@@ -54,7 +55,10 @@ jobs:
             - name: Prepare environment
               run: |
                   if [[ -f builder/docker.sh ]]; then
-                      docker buildx create --use
+                      curl --silent --location --output ~/buildkitd-gha.toml \
+                          "https://github.com/mbT-Infrastructure/template-config-files/raw/refs/\
+                  heads/main/debian/buildkit/buildkitd-gha.toml"
+                      docker buildx create --buildkitd-config ~/buildkitd-gha.toml --use
                   fi
             - name: Build
               if: ${{ github.event_name != 'schedule'}}
@@ -72,6 +76,13 @@ jobs:
               with:
                   name: ${{ env.version }}
                   path: builds/*
+            - name: Prepare release files
+              if: ${{ github.ref == 'refs/heads/main' && env.latest_version != env.version }}
+              run: |
+                  docker run --pull missing --rm --volume "${PWD}/builds:/media/workdir" \
+                  madebytimo/scripts bash -c \
+                  "split-big-files.sh --size 2147483647 --replace --output /media/workdir \
+                  /media/workdir/*"
             - name: Release
               if: ${{ github.ref == 'refs/heads/main' && env.latest_version != env.version }}
               uses: softprops/action-gh-release@v2
@@ -80,9 +91,10 @@ jobs:
                   tag_name: ${{ env.version }}
             - name: Export cache
               run: |
-                  docker run --pull always --rm \
+                  docker run --pull missing --rm \
                       --volume "/media/saved-cache:/media/saved-cache" \
-                      --volume "docker-ollama-build-cache:/media/build-cache" \
+                      --volume \
+                      "docker-ollama-build-cache:/media/build-cache" \
                       madebytimo/scripts \
                       compress.sh --fast --output /media/saved-cache/build-cache /media/build-cache
                   sudo chown -R "$(whoami)" /media/saved-cache

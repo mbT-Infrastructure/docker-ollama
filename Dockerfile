@@ -38,13 +38,11 @@ RUN --mount=type=cache,target=/root/.ccache \
 
 FROM builder-src AS builder-vulkan
 
-RUN VULKAN_VERSION="1.4.328.1" \
-    && mkdir /root/builder/vulkan \
+RUN mkdir /root/builder/vulkan \
     && download.sh --output - \
-    "https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/linux/vulkansdk-linux-x86_64-${VULKAN_VERSION}.tar.xz" \
+    "https://sdk.lunarg.com/sdk/download/latest/linux/vulkan_sdk.tar.xz" \
     | tar --extract --strip-components 1 --xz --directory /root/builder/vulkan \
     && /root/builder/vulkan/vulkansdk --maxjobs shaderc vulkan-loader \
-    && ls -la /root/builder/vulkan/ \
     && cp -r /root/builder/vulkan/x86_64/include/* /usr/local/include/ \
     && cp -r /root/builder/vulkan/x86_64/lib/* /usr/local/lib \
     && cp -r /root/builder/vulkan/x86_64/bin/* /usr/local/bin \

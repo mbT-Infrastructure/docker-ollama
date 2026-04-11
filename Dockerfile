@@ -1,4 +1,4 @@
-FROM madebytimo/builder AS builder-src
+FROM docker.io/madebytimo/builder AS builder-src
 
 WORKDIR /root/builder/ollama-src
 
@@ -9,7 +9,7 @@ RUN mkdir --parents /root/builder/ollama/{bin,lib}
 ENV GIN_MODE=release
 
 
-FROM builder-src AS builder-cuda
+FROM docker.io/madebytimo/builder AS builder-cuda
 ARG TARGETPLATFORM
 
 ENV TARGET_ARCHITECTURE="${TARGETPLATFORM#*/}"
@@ -25,18 +25,34 @@ RUN DISTRIBUTION="$(lsb_release --id --short)" \
     && echo "deb [signed-by=/usr/share/keyrings/nvidia-cuda.gpg]" \
     "https://developer.download.nvidia.com/compute/cuda/repos/${NVIDIA_REPO}/ /" \
     > /etc/apt/sources.list.d/nvidia-cuda.list \
-    && apt update -qq && apt install -y -qq cuda-toolkit-13 \
+    && apt update -qq && apt install -y -qq cuda-toolkit-13 liblapacke-dev libopenblas-dev \
     && rm -rf /var/lib/apt/lists/*
+RUN download.sh --output cudnn-###CTR###.deb \
+    "https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/libcudnn9-cuda-13_9.20.0.48-1_amd64.deb" \
+    "https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/libcudnn9-static-cuda-13_9.20.0.48-1_amd64.deb" \
+    "https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/libcudnn9-dev-cuda-13_9.20.0.48-1_amd64.deb" \
+    "https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/libcudnn9-headers-cuda-13_9.20.0.48-1_amd64.deb" \
+    && apt install -y -qq liblapacke-dev libopenblas-dev ./cudnn-*.deb
 ENV PATH=/usr/local/cuda/bin:$PATH
+
+WORKDIR /root/builder/ollama-src
+COPY --from=builder-src /root/builder/ollama-src/ ./
 
 RUN --mount=type=cache,target=/root/.ccache \
     cmake --preset 'CUDA 13' \
     && cmake --build --parallel "$(nproc)" --preset 'CUDA 13' \
-    && cmake --install build --component CUDA --strip --parallel "$(nproc)" \
+    && cmake --install build --component CUDA --strip --parallel "$(nproc)"
+
+RUN --mount=type=cache,target=/root/.ccache \
+    cmake --preset 'MLX CUDA 13' \
+    -DBLAS_INCLUDE_DIRS=/usr/include/openblas -DLAPACK_INCLUDE_DIRS=/usr/include/openblas \
+    && cmake --build --parallel "$(nproc)" --preset 'MLX CUDA 13' -- \
+    && cmake --install build --component MLX --strip --parallel "$(nproc)" \
+    && mkdir --parents ../ollama/lib \
     && mv dist/lib/ollama ../ollama/lib
 
 
-FROM builder-src AS builder-vulkan
+FROM docker.io/madebytimo/builder AS builder-vulkan
 
 RUN mkdir /root/builder/vulkan \
     && download.sh --output - \
@@ -48,10 +64,14 @@ RUN mkdir /root/builder/vulkan \
     && cp -r /root/builder/vulkan/x86_64/bin/* /usr/local/bin \
     && rm -rf /root/builder/vulkan
 
+WORKDIR /root/builder/ollama-src
+COPY --from=builder-src /root/builder/ollama-src/ ./
+
 RUN --mount=type=cache,target=/root/.ccache \
     cmake --preset 'Vulkan' -DOLLAMA_RUNNER_DIR="vulkan" \
     && cmake --build --parallel "$(nproc)" --preset 'Vulkan' \
     && cmake --install build --component Vulkan --strip --parallel "$(nproc)" \
+    && mkdir --parents ../ollama/lib \
     && mv dist/lib/ollama ../ollama/lib
 
 
@@ -72,7 +92,7 @@ COPY --from=builder-cuda /root/builder/ollama/lib /root/builder/ollama/lib
 COPY --from=builder-vulkan /root/builder/ollama/lib /root/builder/ollama/lib
 
 
-FROM madebytimo/scripts
+FROM docker.io/madebytimo/scripts
 
 RUN apt update -qq && apt install -y -qq mesa-vulkan-drivers \
     && rm -rf /var/lib/apt/lists/*
@@ -88,6 +108,7 @@ ENV OLLAMA_CONTEXT_LENGTH="32000"
 ENV OLLAMA_FLASH_ATTENTION="1"
 ENV OLLAMA_HOST="http://0.0.0.0:11434"
 ENV OLLAMA_KEEP_ALIVE="4h"
+ENV OLLAMA_KV_CACHE_TYPE="q8_0"
 ENV OLLAMA_MAX_LOADED_MODELS="10"
 ENV OLLAMA_NUM_PARALLEL="1"
 ENV OLLAMA_VULKAN="1"

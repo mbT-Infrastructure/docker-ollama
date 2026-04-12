@@ -43,6 +43,7 @@ RUN --mount=type=cache,target=/root/.ccache \
     && cmake --build --parallel "$(nproc)" --preset 'CUDA 13' \
     && cmake --install build --component CUDA --strip --parallel "$(nproc)"
 
+RUN sed --in-place 's/\("CMAKE_CUDA_FLAGS": "-t\) 4\("\)/\1 1 \2/' CMakePresets.json
 RUN --mount=type=cache,target=/root/.ccache \
     cmake --preset 'MLX CUDA 13' \
     -DBLAS_INCLUDE_DIRS=/usr/include/openblas -DLAPACK_INCLUDE_DIRS=/usr/include/openblas \

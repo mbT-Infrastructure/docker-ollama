@@ -5,6 +5,7 @@ This image contains Ollama with the following properties and enhancements:
 -   Flash attention enabled by default.
 -   Default context length of `32000`.
 -   Default KV cache data type `q8_0`.
+-   Allow any origin by default.
 -   Preloading of models via environment variable `PRELOAD_MODELS`
 -   Pulling of models at startup via environment variable `PULL_MODELS`
 -   Option to delete models not specified for preloading or pulling by setting environment variable

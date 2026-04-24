@@ -95,7 +95,7 @@ COPY --from=builder-vulkan /root/builder/ollama/lib /root/builder/ollama/lib
 
 FROM docker.io/madebytimo/scripts
 
-RUN apt update -qq && apt install -y -qq mesa-vulkan-drivers \
+RUN apt update -qq && apt install -y -qq libopenblas0 mesa-vulkan-drivers \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --link /root/builder/ollama/bin/ /usr/local/bin/
